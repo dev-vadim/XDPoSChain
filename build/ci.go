@@ -48,8 +48,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/internal/build"
-	"github.com/ethereum/go-ethereum/params"
-	sv "github.com/ethereum/go-ethereum/swarm/version"
 )
 
 var (
@@ -64,6 +62,9 @@ var (
 		executablePath("rlpdump"),
 		executablePath("wnode"),
 	}
+
+	// Packages to be cross-compiled by the xgo command
+	allCrossCompiledArchiveFiles = allToolsArchiveFiles
 )
 
 var GOBIN, _ = filepath.Abs(filepath.Join("build", "bin"))

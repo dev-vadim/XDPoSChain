@@ -48,7 +48,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var (
@@ -1406,7 +1406,7 @@ func (bc *BlockChain) getResultBlock(block *types.Block, verifiedM2 bool) (*Resu
 		}
 		log.Debug("Number block need calculated again", "number", block.NumberU64(), "hash", block.Hash().Hex(), "winners", len(winner))
 		// Import all the pruned blocks to make the state available
-		_, _, _, err := bc.insertChain(winner)
+		_, _, _, err := bc.insertChain(winner, false)
 		if err != nil {
 			return nil, err
 		}
@@ -1493,7 +1493,9 @@ func (bc *BlockChain) insertBlock(block *types.Block) ([]interface{}, []*types.L
 	}
 	stats.processed++
 	stats.usedGas += result.usedGas
-	stats.report(types.Blocks{block}, 0, bc.stateCache.TrieDB().Size())
+
+	cache, _ := bc.stateCache.TrieDB().Size()
+	stats.report(types.Blocks{block}, 0, cache)
 	if status == CanonStatTy && bc.chainConfig.XDPoS != nil {
 		// epoch block
 		if (block.NumberU64() % bc.chainConfig.XDPoS.Epoch) == 0 {
@@ -2044,8 +2046,19 @@ func (bc *BlockChain) UpdateM1() error {
 		}
 		// update masternodes
 		log.Info("Updating new set of masternodes")
-		if len(ms) > common.MaxMasternodes {
-			err = engine.UpdateMasternodes(bc, bc.CurrentHeader(), ms[:common.MaxMasternodes])
+		// get block header
+		header := bc.CurrentHeader()
+		var maxMasternodes int
+		// check if block number is increase ms checkpoint
+		if bc.chainConfig.IsTIPIncreaseMasternodes(header.Number) {
+			// using new masterndoes
+			maxMasternodes = common.MaxMasternodesV2
+		} else {
+			// using old masterndoes
+			maxMasternodes = common.MaxMasternodes
+		}
+		if len(ms) > maxMasternodes {
+			err = engine.UpdateMasternodes(bc, bc.CurrentHeader(), ms[:maxMasternodes])
 		} else {
 			err = engine.UpdateMasternodes(bc, bc.CurrentHeader(), ms)
 		}

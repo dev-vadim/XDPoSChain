@@ -727,7 +727,7 @@ func (s *Ethereum) shouldPreserve(block *types.Block) bool {
 	// is A, F and G sign the block of round5 and reject the block of opponents
 	// and in the round6, the last available signer B is offline, the whole
 	// network is stuck.
-	if _, ok := s.engine.(*clique.Clique); ok {
+	if _, ok := s.engine.(*XDPoS.XDPoS); ok {
 		return false
 	}
 	return s.isLocalBlock(block)
@@ -803,7 +803,7 @@ func (s *Ethereum) StartStaking(threads int) error {
 		th.SetThreads(threads)
 	}
 	// If the miner was not running, initialize it
-	if !s.IsMining() {
+	if !s.IsStaking() {
 		// Propagate the initial price point to the transaction pool
 		s.lock.RLock()
 		price := s.gasPrice

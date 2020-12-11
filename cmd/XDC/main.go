@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/XDPoS"
 	"github.com/ethereum/go-ethereum/console"
 	"github.com/ethereum/go-ethereum/core"
@@ -337,7 +338,7 @@ func startNode(ctx *cli.Context, stack *node.Node, cfg XDCConfig) {
 	// Start auxiliary services if enabled
 
 	// Mining only makes sense if a full Ethereum node is running
-	if ctx.GlobalBool(utils.LightModeFlag.Name) || ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
+	if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
 		utils.Fatalf("Light clients do not support staking")
 	}
 	var ethereum *eth.Ethereum
@@ -362,18 +363,17 @@ func startNode(ctx *cli.Context, stack *node.Node, cfg XDCConfig) {
 			}
 			if ok {
 				log.Info("Masternode found. Enabling staking mode...")
-				// Use a reduced number of threads if requested
-				if threads := ctx.GlobalInt(utils.StakerThreadsFlag.Name); threads > 0 {
-					type threaded interface {
-						SetThreads(threads int)
-					}
-					if th, ok := ethereum.Engine().(threaded); ok {
-						th.SetThreads(threads)
-					}
+				gasprice := utils.GlobalBig(ctx, utils.MinerLegacyGasPriceFlag.Name)
+				if ctx.IsSet(utils.MinerGasPriceFlag.Name) {
+					gasprice = utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
 				}
-				// Set the gas price to the limits from the CLI and start mining
-				ethereum.TxPool().SetGasPrice(cfg.Eth.GasPrice)
-				if err := ethereum.StartStaking(true); err != nil {
+				ethereum.TxPool().SetGasPrice(gasprice)
+
+				threads := ctx.GlobalInt(utils.StakerLegacyThreadsFlag.Name)
+				if ctx.GlobalIsSet(utils.StakerThreadsFlag.Name) {
+					threads = ctx.GlobalInt(utils.StakerThreadsFlag.Name)
+				}
+				if err := ethereum.StartStaking(threads); err != nil {
 					utils.Fatalf("Failed to start staking: %v", err)
 				}
 				started = true

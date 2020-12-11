@@ -165,8 +165,8 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, XDCConfig) {
 
 	// Check GasPrice
 	common.MinGasPrice = common.DefaultMinGasPrice
-	if ctx.GlobalIsSet(utils.GasPriceFlag.Name) {
-		if gasPrice := int64(ctx.GlobalInt(utils.GasPriceFlag.Name)); gasPrice > common.DefaultMinGasPrice {
+	if ctx.GlobalIsSet(utils.MinerGasPriceFlag.Name) {
+		if gasPrice := int64(ctx.GlobalInt(utils.MinerGasPriceFlag.Name)); gasPrice > common.DefaultMinGasPrice {
 			common.MinGasPrice = gasPrice
 		}
 	}

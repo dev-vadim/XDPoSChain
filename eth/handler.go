@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hashicorp/golang-lru"
+	"math"
 	"math/big"
 	"sync"
 	"sync/atomic"

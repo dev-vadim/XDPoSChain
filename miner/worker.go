@@ -661,7 +661,7 @@ func (w *worker) resultLoop() {
 				}
 				// Send tx sign to smart contract blockSigners.
 				if block.NumberU64()%common.MergeSignRange == 0 || !w.config.IsTIP2019(block.Number()) {
-					if err := contracts.CreateTransactionSign(w.config, w.eth.TxPool(), w.eth.AccountManager(), block, w.chainDb); err != nil {
+					if err := contracts.CreateTransactionSign(w.config, w.eth.TxPool(), w.eth.AccountManager(), block, w.eth.ChainDb()); err != nil {
 						log.Error("Fail to create tx sign for signer", "error", "err")
 					}
 				}
@@ -817,7 +817,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, spec
 			log.Trace("Skipping account with special transaction invalide nonce", "sender", from, "nonce", nonce, "tx nonce ", tx.Nonce(), "to", tx.To())
 			continue
 		}
-		err, logs := w.commitTransaction(tx, coinbase)
+		logs, err := w.commitTransaction(tx, coinbase)
 		switch err {
 		case core.ErrNonceTooLow:
 			// New head notification data race between the transaction pool and miner, shift
@@ -1000,7 +1000,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 					gap = waitPeriodCheckpoint * int64(h)
 				}
 				log.Info("Distance from the parent block", "seconds", gap, "hops", h)
-				waitedTime := time.Now().Unix() - parent.Header().Time.Int64()
+				waitedTime := time.Now().Unix() - int64(parent.Header().Time)
 				if gap > waitedTime {
 					return
 				}

@@ -847,7 +847,7 @@ func (pool *TxPool) promoteSpecialTx(addr common.Address, tx *types.Transaction)
 	}
 	// Otherwise discard any previous transaction and mark this
 	if old != nil {
-		delete(pool.all, old.Hash())
+		pool.all.Remove(old.Hash())
 		pool.priced.Removed()
 		pendingReplaceCounter.Inc(1)
 	}
@@ -859,13 +859,13 @@ func (pool *TxPool) promoteSpecialTx(addr common.Address, tx *types.Transaction)
 		list.gascap = gas
 	}
 	// Failsafe to work around direct pending inserts (tests)
-	if pool.all[tx.Hash()] == nil {
-		pool.all[tx.Hash()] = tx
+	if pool.all.Get(tx.Hash()) == nil {
+		pool.all.Add(tx)
 	}
 	// Set the potentially new pending nonce and notify any subsystems of the new tx
 	pool.beats[addr] = time.Now()
 	pool.pendingState.SetNonce(addr, tx.Nonce()+1)
-	go pool.txFeed.Send(TxPreEvent{tx})
+	go pool.txFeed.Send(NewTxsEvent{types.Transactions{tx}})
 	return true, nil
 }
 

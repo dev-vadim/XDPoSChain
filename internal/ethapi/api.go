@@ -33,8 +33,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/consensus/XDPoS"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/contracts"
 	contractValidator "github.com/ethereum/go-ethereum/contracts/validator/contract"
 	"github.com/ethereum/go-ethereum/core"
@@ -593,7 +593,7 @@ func (s *PublicBlockChainAPI) GetProof(ctx context.Context, address common.Addre
 func (s *PublicBlockChainAPI) GetBlockByNumber(ctx context.Context, blockNr rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	block, err := s.b.BlockByNumber(ctx, blockNr)
 	if block != nil {
-		response, err := s.rpcOutputBlock(block, true, fullTx, ctx)
+		response, err := s.rpcOutputBlock(block, true, fullTx)
 		if err == nil && blockNr == rpc.PendingBlockNumber {
 			// Pending blocks need to nil out a few fields
 			for _, field := range []string{"hash", "nonce", "miner"} {
@@ -610,7 +610,7 @@ func (s *PublicBlockChainAPI) GetBlockByNumber(ctx context.Context, blockNr rpc.
 func (s *PublicBlockChainAPI) GetBlockByHash(ctx context.Context, blockHash common.Hash, fullTx bool) (map[string]interface{}, error) {
 	block, err := s.b.GetBlock(ctx, blockHash)
 	if block != nil {
-		return s.rpcOutputBlock(block, true, fullTx, ctx)
+		return s.rpcOutputBlock(block, true, fullTx)
 	}
 	return nil, err
 }
@@ -626,7 +626,7 @@ func (s *PublicBlockChainAPI) GetUncleByBlockNumberAndIndex(ctx context.Context,
 			return nil, nil
 		}
 		block = types.NewBlockWithHeader(uncles[index])
-		return s.rpcOutputBlock(block, false, false, ctx)
+		return s.rpcOutputBlock(block, false, false)
 	}
 	return nil, err
 }
@@ -642,7 +642,7 @@ func (s *PublicBlockChainAPI) GetUncleByBlockHashAndIndex(ctx context.Context, b
 			return nil, nil
 		}
 		block = types.NewBlockWithHeader(uncles[index])
-		return s.rpcOutputBlock(block, false, false, ctx)
+		return s.rpcOutputBlock(block, false, false)
 	}
 	return nil, err
 }
@@ -819,7 +819,7 @@ func (s *PublicBlockChainAPI) GetCandidateStatus(ctx context.Context, coinbaseAd
 	opts := new(bind.CallOpts)
 	var (
 		candidateAddresses []common.Address
-		candidates []XDPoS.Masternode
+		candidates         []XDPoS.Masternode
 	)
 
 	candidateAddresses, err = validator.GetCandidates(opts)
@@ -839,12 +839,18 @@ func (s *PublicBlockChainAPI) GetCandidateStatus(ctx context.Context, coinbaseAd
 	sort.Slice(candidates, func(i, j int) bool {
 		return candidates[i].Stake.Cmp(candidates[j].Stake) >= 0
 	})
+	var maxMasternodes int
+	if s.b.ChainConfig().IsTIPIncreaseMasternodes(block.Number()) {
+		maxMasternodes = common.MaxMasternodesV2
+	} else {
+		maxMasternodes = common.MaxMasternodes
+	}
 	isTopCandidate := false // is candidates in top 150
 	status := ""
 	for i := 0; i < len(candidates); i++ {
 		if candidates[i].Address == coinbaseAddress {
 			status = statusProposed
-			if i < common.MaxMasternodes {
+			if i < maxMasternodes {
 				isTopCandidate = true
 			}
 			break

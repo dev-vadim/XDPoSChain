@@ -209,8 +209,8 @@ func (h *hasher) store(n Node, db *Database, force bool) (Node, error) {
 	return hash, nil
 }
 
-func (h *hasher) makeHashNode(data []byte) hashNode {
-	n := make(hashNode, h.sha.Size())
+func (h *hasher) makeHashNode(data []byte) HashNode {
+	n := make(HashNode, h.sha.Size())
 	h.sha.Reset()
 	h.sha.Write(data)
 	h.sha.Read(n)
