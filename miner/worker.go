@@ -218,6 +218,12 @@ func newWorker(config *params.ChainConfig, engine consensus.Engine, eth Backend,
 	if worker.announceTxs {
 		// Subscribe NewTxsEvent for tx pool
 		worker.txsSub = eth.TxPool().SubscribeNewTxsEvent(worker.txsCh)
+	} else {
+		// Empty subscription to avoid segfault when calling txsSub.Err()
+		worker.txsSub = event.NewSubscription(func(quit <-chan struct{}) error {
+			<-quit
+			return nil
+		})
 	}
 	// Subscribe events for blockchain
 	worker.chainHeadSub = eth.BlockChain().SubscribeChainHeadEvent(worker.chainHeadCh)
@@ -416,9 +422,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 // mainLoop is a standalone goroutine to regenerate the sealing task based on the received event.
 func (w *worker) mainLoop() {
-	if w.announceTxs {
-		defer w.txsSub.Unsubscribe()
-	}
+	defer w.txsSub.Unsubscribe()
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
 
