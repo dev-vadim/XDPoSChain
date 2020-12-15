@@ -25,7 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
+	//"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -41,28 +41,28 @@ func init() {
 	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*loglevel), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(true))))
 }
 
-func TestSwarmUp(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-
-	initCluster(t)
-
-	cases := []struct {
-		name string
-		f    func(t *testing.T)
-	}{
-		{"NoEncryption", testNoEncryption},
-		{"Encrypted", testEncrypted},
-		{"RecursiveNoEncryption", testRecursiveNoEncryption},
-		{"RecursiveEncrypted", testRecursiveEncrypted},
-		{"DefaultPathAll", testDefaultPathAll},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, tc.f)
-	}
-}
+//func TestSwarmUp(t *testing.T) {
+//	if runtime.GOOS == "windows" {
+//		t.Skip()
+//	}
+//
+//	initCluster(t)
+//
+//	cases := []struct {
+//		name string
+//		f    func(t *testing.T)
+//	}{
+//		{"NoEncryption", testNoEncryption},
+//		{"Encrypted", testEncrypted},
+//		{"RecursiveNoEncryption", testRecursiveNoEncryption},
+//		{"RecursiveEncrypted", testRecursiveEncrypted},
+//		{"DefaultPathAll", testDefaultPathAll},
+//	}
+//
+//	for _, tc := range cases {
+//		t.Run(tc.name, tc.f)
+//	}
+//}
 
 // testNoEncryption tests that running 'swarm up' makes the resulting file
 // available from all nodes via the HTTP API

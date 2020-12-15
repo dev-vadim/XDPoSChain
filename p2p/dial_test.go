@@ -303,7 +303,7 @@ func TestDialStateDynDialBootnode(t *testing.T) {
 					&dialTask{flags: dynDialedConn, dest: newNode(uintID(5), nil)},
 				},
 				new: []task{
-					&dialTask{flags: dynDialedConn, dest: &discover.Node{ID: uintID(4)}},
+					&dialTask{flags: dynDialedConn, dest: newNode(uintID(4), nil)},
 				},
 			},
 		},
@@ -484,7 +484,7 @@ func TestDialStateStaticDial(t *testing.T) {
 					{rw: &conn{flags: staticDialedConn, node: newNode(uintID(3), nil)}},
 				},
 				new: []task{
-					&dialTask{flags: staticDialedConn, dest: &discover.Node{ID: uintID(3)}},
+					&dialTask{flags: staticDialedConn, dest: newNode(uintID(3), nil)},
 				},
 				done: []task{
 					&dialTask{flags: staticDialedConn, dest: newNode(uintID(3), nil)},
@@ -505,8 +505,8 @@ func TestDialStateStaticDial(t *testing.T) {
 					&dialTask{flags: staticDialedConn, dest: newNode(uintID(5), nil)},
 				},
 				new: []task{
-					&dialTask{flags: staticDialedConn, dest: &discover.Node{ID: uintID(4)}},
-					&dialTask{flags: staticDialedConn, dest: &discover.Node{ID: uintID(5)}},
+					&dialTask{flags: staticDialedConn, dest: newNode(uintID(4), nil)},
+					&dialTask{flags: staticDialedConn, dest: newNode(uintID(5), nil)},
 				},
 			},
 			// Wait a round for dial history to expire, no new tasks should spawn.
@@ -560,8 +560,8 @@ func TestDialStaticAfterReset(t *testing.T) {
 				&dialTask{flags: staticDialedConn, dest: newNode(uintID(2), nil)},
 			},
 			new: []task{
-				&dialTask{flags: staticDialedConn, dest: &discover.Node{ID: uintID(1)}},
-				&dialTask{flags: staticDialedConn, dest: &discover.Node{ID: uintID(2)}},
+				&dialTask{flags: staticDialedConn, dest: newNode(uintID(1), nil)},
+				&dialTask{flags: staticDialedConn, dest: newNode(uintID(2), nil)},
 			},
 		},
 	}
@@ -573,7 +573,7 @@ func TestDialStaticAfterReset(t *testing.T) {
 	for _, n := range wantStatic {
 		dTest.init.removeStatic(n)
 		dTest.init.addStatic(n)
-		delete(dTest.init.dialing, n.ID)
+		delete(dTest.init.dialing, n.ID())
 	}
 
 	// without removing peers they will be considered recently dialed

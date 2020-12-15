@@ -167,10 +167,10 @@ func TestMixedcaseAccount_Address(t *testing.T) {
 		Valid bool
 	}
 	if err := json.Unmarshal([]byte(`[
-		{"A" : "0xae967917c465db8578ca9024c205720b1a3651A9", "Valid": false},
-		{"A" : "0xAe967917c465db8578ca9024c205720b1a3651A9", "Valid": true},
-		{"A" : "0XAe967917c465db8578ca9024c205720b1a3651A9", "Valid": false},
-		{"A" : "0x1111111111111111111112222222222223333323", "Valid": true}
+		{"A" : "Xdcae967917c465db8578ca9024c205720b1a3651A9", "Valid": false},
+		{"A" : "xdcAe967917c465db8578ca9024c205720b1a3651A9", "Valid": true},
+		{"A" : "xDcAe967917c465db8578ca9024c205720b1a3651A9", "Valid": false},
+		{"A" : "xdc1111111111111111111112222222222223333323", "Valid": true}
 		]`), &res); err != nil {
 		t.Fatal(err)
 	}

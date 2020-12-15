@@ -198,7 +198,7 @@ func TestServerDial(t *testing.T) {
 
 		select {
 		case peer := <-connected:
-			if peer.ID() != remid {
+			if peer.ID() != enode.PubkeyToIDV4(remid) {
 				t.Errorf("peer has wrong id")
 			}
 			if peer.Name() != "test" {

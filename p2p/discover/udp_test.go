@@ -364,7 +364,7 @@ func TestUDP_pingMatch(t *testing.T) {
 	randToken := make([]byte, 32)
 	crand.Read(randToken)
 
-	test.packetIn(nil, pingPacket, &ping{From: testRemote, To: testLocalAnnounced, Version: 4, Expiration: futureExp})
+	test.packetIn(nil, pingXDC, &ping{From: testRemote, To: testLocalAnnounced, Version: 4, Expiration: futureExp})
 	test.waitPacketOut(func(*pong) error { return nil })
 	test.waitPacketOut(func(*ping) error { return nil })
 	test.packetIn(errUnsolicitedReply, pongPacket, &pong{ReplyTok: randToken, To: testLocalAnnounced, Expiration: futureExp})
@@ -374,7 +374,7 @@ func TestUDP_pingMatchIP(t *testing.T) {
 	test := newUDPTest(t)
 	defer test.close()
 
-	test.packetIn(nil, pingPacket, &ping{From: testRemote, To: testLocalAnnounced, Version: 4, Expiration: futureExp})
+	test.packetIn(nil, pingXDC, &ping{From: testRemote, To: testLocalAnnounced, Version: 4, Expiration: futureExp})
 	test.waitPacketOut(func(*pong) error { return nil })
 
 	_, hash, _ := test.waitPacketOut(func(*ping) error { return nil })
