@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"sync"
@@ -364,11 +365,11 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())
 			timestamp = time.Now().Unix()
-			if w.isRunning() {
-				commit(false, commitInterruptNewHead)
-			}
+			//fmt.Println("from newWorkLoop startCh")
+			commit(false, commitInterruptNewHead)
 
 		case head := <-w.chainHeadCh:
+			log.Warn(">>>>>>>>>>> from newWorkLoop chainHeadCh")
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
@@ -429,9 +430,12 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
+			//log.Warn("from mainLoop newWorkCh")
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
+			log.Warn("from mainLoop newWorkCh after commitNewWork")
 
 		case ev := <-w.chainSideCh:
+			//log.Warn("from mainLoop chainSideCh")
 			if w.config.XDPoS == nil {
 				// Short circuit for duplicate side blocks
 				if _, exist := w.localUncles[ev.Block.Hash()]; exist {
@@ -473,6 +477,7 @@ func (w *worker) mainLoop() {
 			}
 
 		case ev := <-w.txsCh:
+			//log.Warn("from mainLoop txsCh")
 			// Apply transactions to the pending state if we're not mining.
 			//
 			// Note all transactions received may not be continuous with transactions
@@ -492,8 +497,10 @@ func (w *worker) mainLoop() {
 				w.commitTransactions(txset, specialTxs, coinbase, nil)
 				w.updateSnapshot()
 			} else {
+				fmt.Println("from mainLoop txsCh")
 				// If we're mining, but nothing is being processed, wake on new transactions
 				if w.config.XDPoS != nil && w.config.XDPoS.Period == 0 {
+					fmt.Println("from mainLoop txsCh 1")
 					w.commitNewWork(nil, false, time.Now().Unix())
 				}
 			}
@@ -501,12 +508,16 @@ func (w *worker) mainLoop() {
 
 		// System stopped
 		case <-w.exitCh:
+			fmt.Println("from mainLoop exitCh")
 			return
 		case <-w.txsSub.Err():
+			fmt.Println("from mainLoop txsSub.Err()")
 			return
 		case <-w.chainHeadSub.Err():
+			fmt.Println("from mainLoop chainHeadSub.Err()")
 			return
 		case <-w.chainSideSub.Err():
+			fmt.Println("from mainLoop chainSideSub.Err()")
 			return
 		}
 	}
@@ -626,10 +637,12 @@ func (w *worker) resultLoop() {
 			if w.config.XDPoS != nil {
 				// epoch block
 				if (block.NumberU64() % w.config.XDPoS.Epoch) == 0 {
+					//log.Warn("push checkpoint channel in worker")
 					core.CheckpointCh <- 1
 				}
 				// prepare set of masternodes for the next epoch
 				if (block.NumberU64() % w.config.XDPoS.Epoch) == (w.config.XDPoS.Epoch - w.config.XDPoS.Gap) {
+					//log.Warn("UpdateM1() worker")
 					err := w.chain.UpdateM1()
 					if err != nil {
 						log.Error("Error when update masternodes set. Stopping node", "err", err)
@@ -963,6 +976,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
+	//log.Warn("commitNewWork start")
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
 	var signers map[common.Address]struct{}
@@ -970,9 +984,11 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		return
 	}
 	if !w.announceTxs && !w.isRunning() {
+		//log.Warn("commitNewWork not running")
 		return
 	}
 
+	//log.Warn("commitNewWork 1")
 	// Only try to commit new work if we are mining
 	if w.isRunning() {
 		// check if we are right after parent's coinbase in the list
@@ -1056,6 +1072,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 	}
+	//log.Warn("make current")
 	// Could potentially happen if starting to mine in an odd state.
 	err := w.makeCurrent(parent, header)
 	if err != nil {
