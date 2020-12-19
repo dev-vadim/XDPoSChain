@@ -976,19 +976,20 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	//log.Warn("commitNewWork start")
+	log.Warn(">>>>>>>>>>> worker: commitNewWork start")
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
 	var signers map[common.Address]struct{}
 	if parent.Hash().Hex() == w.lastParentBlockCommit {
+		log.Warn(">>>>>>>>>>> worker: lastParentBlockCommit mismatch")
 		return
 	}
 	if !w.announceTxs && !w.isRunning() {
-		//log.Warn("commitNewWork not running")
+		log.Warn(">>>>>>>>>>> worker: commitNewWork not running")
 		return
 	}
 
-	//log.Warn("commitNewWork 1")
+	log.Warn(">>>>>>>>>>> worker: commitNewWork")
 	// Only try to commit new work if we are mining
 	if w.isRunning() {
 		// check if we are right after parent's coinbase in the list
@@ -998,11 +999,11 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			c := w.engine.(*XDPoS.XDPoS)
 			len, preIndex, curIndex, ok, err := c.YourTurn(w.chain, parent.Header(), w.coinbase)
 			if err != nil {
-				log.Warn("Failed when trying to commit new work", "err", err)
+				log.Warn(">>>>>>>>>>> worker: Failed when trying to commit new work", "err", err)
 				return
 			}
 			if !ok {
-				log.Info("Not my turn to commit block. Waiting...")
+				log.Info(">>>>>>>>>>> worker: Not my turn to commit block. Waiting...")
 				// in case some nodes are down
 				if preIndex == -1 {
 					// first block
@@ -1019,12 +1020,12 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				if uint64(h) >= nearest {
 					gap = waitPeriodCheckpoint * int64(h)
 				}
-				log.Info("Distance from the parent block", "seconds", gap, "hops", h)
+				log.Info(">>>>>>>>>>> worker: Distance from the parent block", "seconds", gap, "hops", h)
 				waitedTime := time.Now().Unix() - int64(parent.Header().Time)
 				if gap > waitedTime {
 					return
 				}
-				log.Info("Wait enough. It's my turn", "waited seconds", waitedTime)
+				log.Info(">>>>>>>>>>> worker: Wait enough. It's my turn", "waited seconds", waitedTime)
 			}
 		}
 	}
@@ -1035,7 +1036,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// this will ensure we're not going off too far in the future
 	if now := time.Now().Unix(); timestamp > now+1 {
 		wait := time.Duration(timestamp-now) * time.Second
-		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
+		log.Info(">>>>>>>>>>> worker: Mining too far in the future", "wait", common.PrettyDuration(wait))
 		time.Sleep(wait)
 	}
 
@@ -1050,13 +1051,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
-			log.Error("Refusing to mine without etherbase")
+			log.Error(">>>>>>>>>>> worker: Refusing to mine without etherbase")
 			return
 		}
 		header.Coinbase = w.coinbase
 	}
 	if err := w.engine.Prepare(w.chain, header); err != nil {
-		log.Error("Failed to prepare header for new block", "err", err)
+		log.Error(">>>>>>>>>>> worker: Failed to prepare header for new block", "err", err)
 		return
 	}
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
@@ -1076,7 +1077,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Could potentially happen if starting to mine in an odd state.
 	err := w.makeCurrent(parent, header)
 	if err != nil {
-		log.Error("Failed to create mining context", "err", err)
+		log.Error(">>>>>>>>>>> worker: Failed to create mining context", "err", err)
 		return
 	}
 	// Create the current work task and check any fork transitions needed
@@ -1128,7 +1129,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		// Fill the block with all available pending transactions.
 		pending, err := w.eth.TxPool().Pending()
 		if err != nil {
-			log.Error("Failed to fetch pending transactions", "err", err)
+			log.Error(">>>>>>>>>>> worker: Failed to fetch pending transactions", "err", err)
 			return
 		}
 		// Short circuit if there is no available pending transactions
