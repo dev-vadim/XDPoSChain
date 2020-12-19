@@ -369,7 +369,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			commit(false, commitInterruptNewHead)
 
 		case head := <-w.chainHeadCh:
-			log.Warn(">>>>>>>>>>> from newWorkLoop chainHeadCh")
+			log.Warn(">>>>>>>>>>> worker: newWorkLoop->chainHeadCh")
 			clearPending(head.Block.NumberU64())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
@@ -430,9 +430,9 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
-			//log.Warn("from mainLoop newWorkCh")
+			log.Warn(">>>>>>>>>>> worker: mainLoop newWorkCh")
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
-			log.Warn("from mainLoop newWorkCh after commitNewWork")
+			log.Warn(">>>>>>>>>>> worker: mainLoop->newWorkCh after commitNewWork")
 
 		case ev := <-w.chainSideCh:
 			//log.Warn("from mainLoop chainSideCh")
@@ -1072,7 +1072,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 	}
-	//log.Warn("make current")
+	log.Warn(">>>>>>>>>>> worker: make current")
 	// Could potentially happen if starting to mine in an odd state.
 	err := w.makeCurrent(parent, header)
 	if err != nil {
@@ -1137,7 +1137,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 		// Split the pending transactions into locals and remotes
-		localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
+		localTxs, remoteTxs = make(map[common.Address]types.Transactions), pending
 		for _, account := range w.eth.TxPool().Locals() {
 			if txs := remoteTxs[account]; len(txs) > 0 {
 				delete(remoteTxs, account)
@@ -1145,6 +1145,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 	}
+	log.Warn(">>>>>>>>>>> worker: commit transactions", "local", len(localTxs), "remote", len(remoteTxs))
 	if len(localTxs) > 0 {
 		txs, specialTxs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs, signers)
 		if w.commitTransactions(txs, specialTxs, w.coinbase, interrupt) {
@@ -1157,6 +1158,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
+	log.Warn(">>>>>>>>>>> worker: commit")
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
