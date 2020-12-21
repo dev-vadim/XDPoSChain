@@ -541,6 +541,7 @@ func (w *worker) taskLoop() {
 	for {
 		select {
 		case task := <-w.taskCh:
+			log.Warn(">>>>>>>>>>> worker: taskLoop taskCh")
 			if w.newTaskHook != nil {
 				w.newTaskHook(task)
 			}
@@ -976,7 +977,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	log.Warn(">>>>>>>>>>> worker: commitNewWork start")
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
 	var signers map[common.Address]struct{}
@@ -989,7 +989,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		return
 	}
 
-	log.Warn(">>>>>>>>>>> worker: commitNewWork")
+	log.Warn(">>>>>>>>>>> worker: commitNewWork start")
 	// Only try to commit new work if we are mining
 	if w.isRunning() {
 		// check if we are right after parent's coinbase in the list
@@ -1159,13 +1159,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
-	log.Warn(">>>>>>>>>>> worker: commit")
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
 func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
+	log.Warn(">>>>>>>>>>> worker: commit")
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := make([]*types.Receipt, len(w.current.receipts))
 	for i, l := range w.current.receipts {
@@ -1175,6 +1175,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	s := w.current.state.Copy()
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 	if err != nil {
+		log.Warn(">>>>>>>>>>> worker: finalization error", "error", err.Err())
 		return err
 	}
 	if w.isRunning() {
@@ -1202,5 +1203,6 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	if update {
 		w.updateSnapshot()
 	}
+	log.Warn(">>>>>>>>>>> worker: commit end")
 	return nil
 }
