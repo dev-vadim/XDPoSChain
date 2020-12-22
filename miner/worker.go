@@ -430,7 +430,6 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
-			log.Warn(">>>>>>>>>>> worker: mainLoop newWorkCh")
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 			log.Warn(">>>>>>>>>>> worker: mainLoop->newWorkCh after commitNewWork")
 
@@ -541,7 +540,7 @@ func (w *worker) taskLoop() {
 	for {
 		select {
 		case task := <-w.taskCh:
-			log.Warn(">>>>>>>>>>> worker: taskLoop taskCh")
+			log.Warn(">>>>>>>>>>> worker: taskLoop taskCh", "hash", task.block.Header().Hash())
 			if w.newTaskHook != nil {
 				w.newTaskHook(task)
 			}
@@ -554,6 +553,7 @@ func (w *worker) taskLoop() {
 			interrupt()
 			stopCh, prev = make(chan struct{}), sealHash
 
+			log.Warn(">>>>>>>>>>> worker: taskLoop", "hash", task.block.Header().Hash())
 			if w.skipSealHook != nil && w.skipSealHook(task) {
 				continue
 			}
@@ -564,7 +564,9 @@ func (w *worker) taskLoop() {
 			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
 			}
+			log.Warn(">>>>>>>>>>> worker: taskLoop end", "hash", task.block.Header().Hash())
 		case <-w.exitCh:
+			log.Warn(">>>>>>>>>>> worker: taskLoop exitCh")
 			interrupt()
 			return
 		}
@@ -1175,13 +1177,14 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	s := w.current.state.Copy()
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 	if err != nil {
-		log.Warn(">>>>>>>>>>> worker: finalization error", "error", err.Err())
+		log.Warn(">>>>>>>>>>> worker: finalization error", "error", err.Error())
 		return err
 	}
 	if w.isRunning() {
 		if interval != nil {
 			interval()
 		}
+		log.Warn(">>>>>>>>>>> worker: create a task", "hash", block.Header().Hash())
 		select {
 		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
 			w.unconfirmed.Shift(block.NumberU64() - 1)
