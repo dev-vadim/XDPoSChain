@@ -553,7 +553,6 @@ func (w *worker) taskLoop() {
 			interrupt()
 			stopCh, prev = make(chan struct{}), sealHash
 
-			log.Warn(">>>>>>>>>>> worker: taskLoop", "hash", task.block.Header().Hash())
 			if w.skipSealHook != nil && w.skipSealHook(task) {
 				continue
 			}
