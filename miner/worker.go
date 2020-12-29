@@ -1128,6 +1128,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 	}
+	log.Warn(">>>>>>>>>>> worker: root before\t" + w.current.state.IntermediateRoot(true).String())
 	if len(localTxs) > 0 {
 		txs, specialTxs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs, signers)
 		if w.commitTransactions(txs, specialTxs, w.coinbase, interrupt) {
@@ -1140,7 +1141,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
-	log.Warn(">>>>>>>>>>> worker: commit transactions" + w.current.state.IntermediateRoot(true).String())
+	log.Warn(">>>>>>>>>>> worker: root after\t" + w.current.state.IntermediateRoot(true).String())
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
@@ -1153,7 +1154,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		receipts[i] = new(types.Receipt)
 		*receipts[i] = *l
 	}
-	log.Warn(">>>>>>>>>>> worker: commit" + w.current.state.IntermediateRoot(true).String())
+	log.Warn(">>>>>>>>>>> worker: commit\t" + w.current.state.IntermediateRoot(true).String())
 	s := w.current.state.Copy()
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 	if err != nil {
