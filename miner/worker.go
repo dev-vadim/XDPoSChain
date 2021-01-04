@@ -1126,7 +1126,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			}
 		}
 	}
-	log.Warn(">>>>>>>>>>> worker: root before\t" + w.current.state.IntermediateRoot(true).String())
 	if len(localTxs) > 0 {
 		txs, specialTxs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs, signers)
 		if w.commitTransactions(txs, specialTxs, w.coinbase, interrupt) {
@@ -1139,7 +1138,6 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
-	log.Warn(">>>>>>>>>>> worker: root after\t" + w.current.state.IntermediateRoot(true).String())
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
