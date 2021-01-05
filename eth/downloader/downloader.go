@@ -1463,11 +1463,12 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 // processFullSyncContent takes fetch results from the queue and imports them into the chain.
 func (d *Downloader) processFullSyncContent(height uint64) error {
 	for {
+		log.Warn(">>>>>>>>>> processFullSyncContent start")
 		results := d.queue.Results(true)
 		if len(results) == 0 {
 			return nil
 		}
-		log.Warn(">>>>>>>>>> processFullSyncContent start")
+		log.Warn(">>>>>>>>>> processFullSyncContent")
 		if d.blockchain.Config() != nil && d.blockchain.Config().XDPoS != nil {
 			epoch := d.blockchain.Config().XDPoS.Epoch
 			gap := d.blockchain.Config().XDPoS.Gap
