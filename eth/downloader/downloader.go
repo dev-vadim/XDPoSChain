@@ -1467,6 +1467,7 @@ func (d *Downloader) processFullSyncContent(height uint64) error {
 		if len(results) == 0 {
 			return nil
 		}
+		log.Warn(">>>>>>>>>> processFullSyncContent start")
 		if d.blockchain.Config() != nil && d.blockchain.Config().XDPoS != nil {
 			epoch := d.blockchain.Config().XDPoS.Epoch
 			gap := d.blockchain.Config().XDPoS.Gap
