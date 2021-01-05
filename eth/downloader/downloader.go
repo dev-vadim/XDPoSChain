@@ -325,7 +325,9 @@ func (d *Downloader) UnregisterPeer(id string) error {
 // Synchronise tries to sync up our local block chain with a remote peer, both
 // adding various sanity checks as well as wrapping it with various log entries.
 func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode SyncMode) error {
+	log.Warn(">>>>>>>>>> downloader: Synchronise start")
 	err := d.synchronise(id, head, td, mode)
+	log.Warn(">>>>>>>>>> downloader: Synchronise")
 	switch err {
 	case nil:
 	case errBusy:
@@ -501,6 +503,7 @@ func (d *Downloader) spawnSync(fetchers []func() error) error {
 			// Close the queue when all fetchers have exited.
 			// This will cause the block processor to end when
 			// it has processed the queue.
+			log.Warn(">>>>>>>>>> downloader: closing queue")
 			d.queue.Close()
 		}
 		if err = <-errc; err != nil {
