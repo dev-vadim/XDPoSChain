@@ -617,6 +617,7 @@ func (srv *Server) run(dialstate dialer) {
 	// Put trusted nodes into a map to speed up checks.
 	// Trusted peers are loaded on startup or added via AddTrustedPeer RPC.
 	for _, n := range srv.TrustedNodes {
+		srv.log.Info(">>>>>>>>>>> trusted: " + n.ID().String())
 		trusted[n.ID()] = true
 	}
 
@@ -734,10 +735,10 @@ running:
 				go srv.runPeer(p)
 				if peers[c.node.ID()] != nil {
 					peers[c.node.ID()].PairPeer = p
-					srv.log.Debug("Adding p2p pair peer", "name", name, "addr", c.fd.RemoteAddr(), "peers", len(peers)+1)
+					srv.log.Info("Adding p2p pair peer", "name", name, "addr", c.fd.RemoteAddr(), "peers", len(peers)+1)
 				} else {
 					peers[c.node.ID()] = p
-					srv.log.Debug("Adding p2p peer", "name", name, "addr", c.fd.RemoteAddr(), "peers", len(peers)+1)
+					srv.log.Info("Adding p2p peer", "name", name, "addr", c.fd.RemoteAddr(), "peers", len(peers)+1)
 				}
 				if p.Inbound() {
 					inboundCount++
