@@ -280,7 +280,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
 		return p2p.DiscTooManyPeers
 	}
-	p.Log().Debug("Ethereum peer connected", "name", p.Name())
+	p.Log().Info("Ethereum peer connected", "name", p.Name())
 
 	// Execute the Ethereum handshake
 	var (
@@ -291,9 +291,10 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		td      = pm.blockchain.GetTd(hash, number)
 	)
 	if err := p.Handshake(pm.networkID, td, hash, genesis.Hash()); err != nil {
-		p.Log().Debug("Ethereum handshake failed", "err", err)
+		p.Log().Error("Ethereum handshake failed", "err", err)
 		return err
 	}
+	p.Log().Info("Ethereum handshake success", "name", p.Name())
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
 		rw.Init(p.version)
 	}
@@ -303,10 +304,12 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		p.Log().Error("Ethereum peer registration failed", "err", err)
 		return err
 	}
+	p.Log().Info("Ethereum registration success", "name", p.Name())
 	defer pm.removePeer(p.id)
 	if err != p2p.ErrAddPairPeer {
 		// Register the peer in the downloader. If the downloader considers it banned, we disconnect
 		if err := pm.downloader.RegisterPeer(p.id, p.version, p); err != nil {
+			p.Log().Error("downloader peer registration failed", "err", err)
 			return err
 		}
 		// Propagate existing transactions. new transactions appearing
