@@ -323,6 +323,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			atomic.StoreInt32(interrupt, s)
 		}
 		interrupt = new(int32)
+		log.Warn(">>>>>>>>>>> worker: push new work")
 		w.newWorkCh <- &newWorkReq{interrupt: interrupt, noempty: noempty, timestamp: timestamp}
 		timer.Reset(recommit)
 		atomic.StoreInt32(&w.newTxs, 0)
@@ -372,7 +373,6 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			commit(false, commitInterruptNewHead)
 
 		case <-timer.C:
-			log.Warn(">>>>>>>>>>> worker: timer is up")
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
 			if w.isRunning() && (w.config.Clique == nil || w.config.Clique.Period > 0) {
@@ -548,6 +548,7 @@ func (w *worker) taskLoop() {
 			w.pendingTasks[w.engine.SealHash(task.block.Header())] = task
 			w.pendingMu.Unlock()
 
+			log.Warn(">>>>>>>>>>> worker: seal")
 			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
 			}
@@ -985,7 +986,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 				return
 			}
 			if !ok {
-				log.Info("Not my turn to commit block. Waiting...")
+				log.Info("Not my turn to commit block. Waiting...", "coinbase", w.coinbase, "parent", parent.Header().Number)
 				// in case some nodes are down
 				if preIndex == -1 {
 					// first block
