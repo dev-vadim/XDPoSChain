@@ -323,7 +323,6 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			atomic.StoreInt32(interrupt, s)
 		}
 		interrupt = new(int32)
-		log.Warn(">>>>>>>>>>> worker: push new work")
 		w.newWorkCh <- &newWorkReq{interrupt: interrupt, noempty: noempty, timestamp: timestamp}
 		timer.Reset(recommit)
 		atomic.StoreInt32(&w.newTxs, 0)
@@ -376,12 +375,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
 			if w.isRunning() && (w.config.Clique == nil || w.config.Clique.Period > 0) {
-				// Short circuit if no new transaction arrives.
-				if atomic.LoadInt32(&w.newTxs) == 0 {
-					timer.Reset(recommit)
-					continue
-				}
-				commit(true, commitInterruptResubmit)
+				commit(false, commitInterruptResubmit)
 			}
 
 		case interval := <-w.resubmitIntervalCh:
