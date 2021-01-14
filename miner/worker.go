@@ -374,7 +374,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		case <-timer.C:
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
-			if w.isRunning() && (w.config.Clique == nil || w.config.Clique.Period > 0) {
+			if w.isRunning() && (w.config.XDPoS == nil || w.config.XDPoS.Period > 0) {
 				commit(false, commitInterruptResubmit)
 			}
 
@@ -542,7 +542,6 @@ func (w *worker) taskLoop() {
 			w.pendingTasks[w.engine.SealHash(task.block.Header())] = task
 			w.pendingMu.Unlock()
 
-			log.Warn(">>>>>>>>>>> worker: seal")
 			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
 			}
@@ -1146,7 +1145,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		receipts[i] = new(types.Receipt)
 		*receipts[i] = *l
 	}
-	log.Warn(">>>>>>>>>>> worker: commit\t" + w.current.state.IntermediateRoot(true).String())
+	log.Info("commit", "root", w.current.state.IntermediateRoot(true).String())
 	s := w.current.state.Copy()
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 	if err != nil {
