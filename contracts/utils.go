@@ -75,7 +75,7 @@ func CreateTransactionSign(chainConfig *params.ChainConfig, pool *core.TxPool, m
 		}
 
 		// Create and send tx to smart contract for sign validate block.
-		nonce := pool.State().GetNonce(account.Address)
+		nonce := pool.Nonce(account.Address)
 		tx := CreateTxSign(block.Number(), block.Hash(), nonce, common.HexToAddress(common.BlockSigners))
 		txSigned, err := wallet.SignTx(account, tx, chainConfig.ChainID)
 		if err != nil {
@@ -327,7 +327,7 @@ func GetRewardForCheckpoint(c *XDPoS.XDPoS, chain consensus.ChainReader, header 
 			block := chain.GetBlock(header.Hash(), i)
 			txs := block.Transactions()
 			if !chain.Config().IsTIPSigning(header.Number) {
-				receipts := rawdb.ReadReceipts(c.GetDb(), header.Hash(), i)
+				receipts := rawdb.ReadReceipts(c.GetDb(), header.Hash(), i, chain.Config())
 				signData = c.CacheData(header, txs, receipts)
 			} else {
 				signData = c.CacheSigner(header.Hash(), txs)

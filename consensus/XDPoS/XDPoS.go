@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -204,7 +205,7 @@ func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, er
 	signature := header.Extra[len(header.Extra)-extraSeal:]
 
 	// Recover the public key and the Ethereum address
-	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	pubkey, err := crypto.Ecrecover(SealHash(header).Bytes(), signature)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -326,7 +327,7 @@ func (c *XDPoS) verifyHeader(chain consensus.ChainReader, header *types.Header, 
 			return consensus.ErrNoValidatorSignature
 		}
 		// Don't waste time checking blocks from the future
-		if int64(header.Time) > time.Now().Unix() {
+		if header.Time > uint64(time.Now().Unix()) {
 			return consensus.ErrFutureBlock
 		}
 	}
@@ -578,8 +579,11 @@ func (c *XDPoS) snapshot(chain consensus.ChainReader, number uint64, hash common
 				break
 			}
 		}
-		// If we're at an checkpoint block, make a snapshot if it's known
-		if number == 0 || (number%c.config.Epoch == 0 && chain.GetHeaderByNumber(number-1) == nil) {
+		// If we're at the genesis, snapshot the initial state. Alternatively if we're
+		// at a checkpoint block without a parent (light client CHT), or we have piled
+		// up more headers than allowed to be reorged (chain reinit from a freezer),
+		// consider the checkpoint trusted and snapshot it.
+		if number == 0 || (number%c.config.Epoch == 0 && (len(headers) > params.ImmutabilityThreshold || chain.GetHeaderByNumber(number-1) == nil)) {
 			checkpoint := chain.GetHeaderByNumber(number)
 			if checkpoint != nil {
 				hash := checkpoint.Hash()
@@ -863,7 +867,7 @@ func (c *XDPoS) Prepare(chain consensus.ChainReader, header *types.Header) error
 	// Ensure the timestamp has the correct delay
 
 	header.Time = parent.Time+ c.config.Period
-	if int64(header.Time) < time.Now().Unix() {
+	if header.Time < uint64(time.Now().Unix()) {
 		header.Time = uint64(time.Now().Unix())
 	}
 	return nil
@@ -892,8 +896,37 @@ func (c *XDPoS) UpdateMasternodes(chain consensus.ChainReader, header *types.Hea
 }
 
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
-// rewards given, and returns the final block.
-func (c *XDPoS) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
+// rewards given.
+func (c *XDPoS) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header) {
+	// set block reward
+	number := header.Number.Uint64()
+	rCheckpoint := chain.Config().XDPoS.RewardCheckpoint
+
+	// _ = c.CacheData(header, txs, receipts)
+
+	if c.HookReward != nil && number%rCheckpoint == 0 {
+		err, rewards := c.HookReward(chain, state, header)
+		if err == nil {
+			if len(common.StoreRewardFolder) > 0 {
+				data, err := json.Marshal(rewards)
+				if err == nil {
+					err = ioutil.WriteFile(filepath.Join(common.StoreRewardFolder, header.Number.String()+"."+header.Hash().Hex()), data, 0644)
+				}
+				if err != nil {
+					log.Error("Error when save reward info ", "number", header.Number, "hash", header.Hash().Hex(), "err", err)
+				}
+			}
+		}
+	}
+
+	// the state remains as is and uncles are dropped
+	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.UncleHash = types.CalcUncleHash(nil)
+}
+
+// FinalizeAndAssemble implements consensus.Engine, ensuring no uncles are set,
+// nor block rewards given, and returns the final block.
+func (c *XDPoS) FinalizeAndAssemble(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
 	// set block reward
 	number := header.Number.Uint64()
 	rCheckpoint := chain.Config().XDPoS.RewardCheckpoint
@@ -991,7 +1024,7 @@ func (c *XDPoS) Seal(chain consensus.ChainReader, block *types.Block, results ch
 		}
 	}
 	// Sign all the things!
-	sighash, err := signFn(accounts.Account{Address: signer}, sigHash(header).Bytes())
+	sighash, err := signFn(accounts.Account{Address: signer}, accounts.MimetypeXDPoS, XDPoSRLP(header))
 	if err != nil {
 		return err
 	}
@@ -1014,7 +1047,7 @@ func (c *XDPoS) Seal(chain consensus.ChainReader, block *types.Block, results ch
 		select {
 		case results <- block.WithSeal(header):
 		default:
-			log.Warn("Sealing result is not read by miner", "sealhash", c.SealHash(header))
+			log.Warn("Sealing result is not read by miner", "sealhash", SealHash(header))
 		}
 	}()
 	return nil
@@ -1037,7 +1070,7 @@ func (c *XDPoS) calcDifficulty(chain consensus.ChainReader, parent *types.Header
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (c *XDPoS) SealHash(header *types.Header) common.Hash {
-	return sigHash(header)
+	return SealHash(header)
 }
 
 // Close implements consensus.Engine. It's a noop for XDPoS as there are no background threads.
@@ -1228,5 +1261,49 @@ func Hop(len, pre, cur int) int {
 		return (len - pre) + (cur - 1)
 	default:
 		return len - 1
+	}
+}
+
+// SealHash returns the hash of a block prior to it being sealed.
+func SealHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+	encodeSigHeader(hasher, header)
+	hasher.Sum(hash[:0])
+	return hash
+}
+
+// XDPoSRLP returns the rlp bytes which needs to be signed for the proof-of-authority
+// sealing. The RLP to sign consists of the entire header apart from the 65 byte signature
+// contained at the end of the extra data.
+//
+// Note, the method requires the extra data to be at least 65 bytes, otherwise it
+// panics. This is done to avoid accidentally using both forms (signature present
+// or not), which could be abused to produce different hashes for the same header.
+func XDPoSRLP(header *types.Header) []byte {
+	b := new(bytes.Buffer)
+	encodeSigHeader(b, header)
+	return b.Bytes()
+}
+
+func encodeSigHeader(w io.Writer, header *types.Header) {
+	err := rlp.Encode(w, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
+		header.MixDigest,
+		header.Nonce,
+	})
+	if err != nil {
+		panic("can't encode: " + err.Error())
 	}
 }
