@@ -70,6 +70,7 @@ const (
 	p_pongV4
 	p_findnodeV4
 	p_neighborsV4
+	p_pingXDCV4
 	p_enrRequestV4
 	p_enrResponseV4
 )
@@ -821,7 +822,7 @@ func decodeV4(buf []byte) (packetV4, encPubkey, []byte, error) {
 
 	var req packetV4
 	switch ptype := sigdata[0]; ptype {
-	case p_pingV4:
+	case p_pingXDCV4:
 		req = new(pingV4)
 	case p_pongV4:
 		req = new(pongV4)
@@ -874,8 +875,8 @@ func seqFromTail(tail []rlp.RawValue) uint64 {
 
 // PING/v4
 
-func (req *pingV4) name() string { return "PING/v4" }
-func (req *pingV4) kind() byte   { return p_pingV4 }
+func (req *pingV4) name() string { return "PING XDC/v4" }
+func (req *pingV4) kind() byte   { return p_pingXDCV4 }
 
 func (req *pingV4) preverify(t *UDPv4, from *net.UDPAddr, fromID enode.ID, fromKey encPubkey) error {
 	if expired(req.Expiration) {
@@ -964,6 +965,7 @@ func (req *findnodeV4) handle(t *UDPv4, from *net.UDPAddr, fromID enode.ID, mac 
 
 	// Send neighbors in chunks with at most maxNeighbors per packet
 	// to stay below the packet size limit.
+	log.Trace("find neighbors ", "from", from, "fromID", fromID, "closest", len(closest))
 	p := neighborsV4{Expiration: uint64(time.Now().Add(expiration).Unix())}
 	var sent bool
 	for _, n := range closest {
