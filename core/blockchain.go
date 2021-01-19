@@ -1860,13 +1860,13 @@ func (bc *BlockChain) getResultBlock(block *types.Block, verifiedM2 bool) (*Resu
 	}
 	// Create a new statedb using the parent block and report an
 	// error if it fails.
-	var parent = bc.GetBlock(block.ParentHash(), block.NumberU64()-1)
-	state, err := state.New(parent.Root(), bc.stateCache)
+	var parent = bc.GetHeader(block.ParentHash(), block.NumberU64()-1)
+	statedb, err := state.New(parent.Root, bc.stateCache)
 	if err != nil {
 		return nil, err
 	}
 	// Process block using the parent state as reference point.
-	receipts, logs, usedGas, err := bc.processor.ProcessBlockNoValidator(calculatedBlock, state, bc.vmConfig)
+	receipts, logs, usedGas, err := bc.processor.ProcessBlockNoValidator(calculatedBlock, statedb, bc.vmConfig)
 	process := time.Since(bstart)
 	if err != nil {
 		if err != ErrStopPreparingBlock {
@@ -1875,7 +1875,7 @@ func (bc *BlockChain) getResultBlock(block *types.Block, verifiedM2 bool) (*Resu
 		return nil, err
 	}
 	// Validate the state using the default validator
-	err = bc.validator.ValidateState(block, state, receipts, usedGas)
+	err = bc.validator.ValidateState(block, statedb, receipts, usedGas)
 	if err != nil {
 		bc.reportBlock(block, receipts, err)
 		return nil, err
@@ -1883,7 +1883,7 @@ func (bc *BlockChain) getResultBlock(block *types.Block, verifiedM2 bool) (*Resu
 	proctime := time.Since(bstart)
 	log.Debug("Calculate new block", "number", block.Number(), "hash", block.Hash(), "uncles", len(block.Uncles()),
 		"txs", len(block.Transactions()), "gas", block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)), "process", process)
-	return &ResultProcessBlock{receipts: receipts, logs: logs, state: state, proctime: proctime, usedGas: usedGas}, nil
+	return &ResultProcessBlock{receipts: receipts, logs: logs, state: statedb, proctime: proctime, usedGas: usedGas}, nil
 }
 
 // insertChain will execute the actual chain insertion and event aggregation. The
@@ -1912,7 +1912,7 @@ func (bc *BlockChain) insertBlock(block *types.Block) ([]interface{}, []*types.L
 	if bc.HasBlockAndState(block.Hash(), block.NumberU64()) {
 		return events, coalescedLogs, nil
 	}
-	status, err := bc.WriteBlockWithState(block, result.receipts, result.state)
+	status, err := bc.writeBlockWithState(block, result.receipts, result.state)
 
 	if err != nil {
 		return events, coalescedLogs, err
