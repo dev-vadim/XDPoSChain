@@ -154,42 +154,7 @@ var (
 
 // SignerFn is a signer callback function to request a hash to be signed by a
 // backing account.
-//type SignerFn func(accounts.Account, []byte) ([]byte, error)
-
-// sigHash returns the hash which is used as input for the proof-of-stake-voting
-// signing. It is the hash of the entire header apart from the 65 byte signature
-// contained at the end of the extra data.
-//
-// Note, the method requires the extra data to be at least 65 bytes, otherwise it
-// panics. This is done to avoid accidentally using both forms (signature present
-// or not), which could be abused to produce different hashes for the same header.
-func sigHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewLegacyKeccak256()
-
-	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Extra[:len(header.Extra)-65], // Yes, this will panic if extra is too short
-		header.MixDigest,
-		header.Nonce,
-	})
-	hasher.Sum(hash[:0])
-	return hash
-}
-
-func SigHash(header *types.Header) (hash common.Hash) {
-	return sigHash(header)
-}
+//type SignerFn func(accounts.Account, string, []byte) ([]byte, error)
 
 // ecrecover extracts the Ethereum account address from a signed header.
 func ecrecover(header *types.Header, sigcache *lru.ARCCache) (common.Address, error) {
@@ -742,7 +707,7 @@ func (c *XDPoS) verifySeal(chain consensus.ChainReader, header *types.Header, pa
 			return err
 		}
 		if validator != assignedValidator {
-			log.Debug("Bad block detected. Header contains wrong pair of creator-validator", "creator", creator, "assigned validator", assignedValidator, "wrong validator", validator)
+			log.Info("Bad block detected. Header contains wrong pair of creator-validator", "creator", creator, "assigned validator", assignedValidator, "wrong validator", validator)
 			return errFailedDoubleValidation
 		}
 	}
@@ -1105,7 +1070,7 @@ func (c *XDPoS) RecoverValidator(header *types.Header) (common.Address, error) {
 		return common.Address{}, consensus.ErrFailValidatorSignature
 	}
 	// Recover the public key and the Ethereum address
-	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), header.Validator)
+	pubkey, err := crypto.Ecrecover(SealHash(header).Bytes(), header.Validator)
 	if err != nil {
 		return common.Address{}, err
 	}

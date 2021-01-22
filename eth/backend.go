@@ -289,7 +289,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 					return block, false, err
 				}
 				header := block.Header()
-				sighash, err := wallet.SignText(accounts.Account{Address: eb}, XDPoS.XDPoSRLP(header))
+				sighash, err := wallet.SignData(accounts.Account{Address: eb}, accounts.MimetypeXDPoS, XDPoS.XDPoSRLP(header))
 				if err != nil || sighash == nil {
 					log.Error("Can't get signature hash of m2", "sighash", sighash, "err", err)
 					return block, false, err
@@ -307,11 +307,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		c.HookValidator = func(header *types.Header, signers []common.Address) ([]byte, error) {
 			start := time.Now()
 			validators, err := GetValidators(eth.blockchain, signers)
+			log.Debug("Time Calculated HookValidator ", "block", header.Number.Uint64(), "time", common.PrettyDuration(time.Since(start)))
 			if err != nil {
 				return []byte{}, err
 			}
 			header.Validators = validators
-			log.Debug("Time Calculated HookValidator ", "block", header.Number.Uint64(), "time", common.PrettyDuration(time.Since(start)))
 			return validators, nil
 		}
 

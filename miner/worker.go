@@ -373,11 +373,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 			// If mining is running resubmit a new work cycle periodically to pull in
 			// higher priced transactions. Disable this overhead for pending blocks.
 			if w.isRunning() && (w.chainConfig.XDPoS == nil || w.chainConfig.XDPoS.Period > 0) {
-				if atomic.LoadInt32(&w.newTxs) == 0 {
-					timer.Reset(recommit)
-					continue
-				}
-				commit(true, commitInterruptResubmit)
+				commit(false, commitInterruptResubmit)
 			}
 
 		case interval := <-w.resubmitIntervalCh:
