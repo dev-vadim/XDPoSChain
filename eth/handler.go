@@ -795,7 +795,7 @@ func (pm *ProtocolManager) BroadcastBlock(block *types.Block, propagate bool) {
 			return
 		}
 		// Send the block to a subset of our peers
-		transferLen := int(math.Sqrt(float64(len(peers))))
+		transferLen := len(peers)//int(math.Sqrt(float64(len(peers))))
 		if transferLen < minBroadcastPeers {
 			transferLen = minBroadcastPeers
 		}
