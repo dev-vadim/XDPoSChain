@@ -1,6 +1,6 @@
-FROM golang:1.11-alpine as builder
+FROM golang:1.12-alpine as builder
 
-RUN apk add --no-cache make gcc musl-dev linux-headers
+RUN apk add --no-cache make gcc musl-dev linux-headers git
 
 ADD . /XDCchain
 RUN cd /XDCchain && make XDC
