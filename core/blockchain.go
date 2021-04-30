@@ -1759,13 +1759,24 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 }
 
 func (bc *BlockChain) InsertBlock(block *types.Block) error {
+	bc.wg.Add(1)
+	bc.chainmu.Lock()
 	events, logs, err := bc.insertBlock(block)
+	bc.chainmu.Unlock()
+	bc.wg.Done()
+
 	bc.PostChainEvents(events, logs)
 	return err
 }
 
 func (bc *BlockChain) PrepareBlock(block *types.Block) (err error) {
 	defer log.Debug("Done prepare block ", "number", block.NumberU64(), "hash", block.Hash(), "validator", block.Header().Validator, "err", err)
+
+	bc.wg.Add(1)
+	bc.chainmu.Lock()
+	defer bc.wg.Done()
+	defer bc.chainmu.Unlock()
+
 	if _, check := bc.resultProcess.Get(block.Hash()); check {
 		log.Debug("Stop prepare a block because the result cached", "number", block.NumberU64(), "hash", block.Hash(), "validator", block.Header().Validator)
 		return nil
@@ -1904,11 +1915,7 @@ func (bc *BlockChain) insertBlock(block *types.Block) ([]interface{}, []*types.L
 		return events, coalescedLogs, err
 	}
 	defer bc.resultProcess.Remove(block.HashNoValidator())
-	bc.wg.Add(1)
-	defer bc.wg.Done()
 	// Write the block to the chain and get the status.
-	bc.chainmu.Lock()
-	defer bc.chainmu.Unlock()
 	if bc.HasBlockAndState(block.Hash(), block.NumberU64()) {
 		return events, coalescedLogs, nil
 	}
